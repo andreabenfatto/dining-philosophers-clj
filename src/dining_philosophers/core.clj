@@ -1,12 +1,12 @@
 (ns dining-philosophers.core)
 
 
-(def forks (atom [0 0 0 0 0]))
-(def eaten (atom [0 0 0 0 0]))
+(def table (atom {:forks [0 0 0 0 0]
+                  :eaten [0 0 0 0 0]}))
 
 (defn run? []
   ;; I didn't find any better solutions.
-  (< (nth @eaten 0) 20))
+  (< (nth (@table :eaten) 0) 20))
 
 (defn think [philosopher]
   ;;(println "philosopher" philosopher "is thinking..")
@@ -16,29 +16,32 @@
 
 (defn eat! [philosopher]
   ;;(println "philosopher" philosopher "is eating..")
-  (swap! eaten assoc philosopher (inc (nth @eaten philosopher)))
+  (swap! table update-in [:eaten philosopher] inc)
   (Thread/sleep (rand-int 30))
   ;;(println "philosopher" philosopher "is done eating!")
   )
 
-(defn grab-fork! [fork-position]
-  (if (= 0 (nth @forks fork-position))
+(defn forks-update! [position status]
+  (swap! table assoc-in [:forks position] status))
+
+(defn grab-fork [fork-position]
+  (if (= 0 (nth (@table :forks) fork-position))
     (do
-      (swap! forks assoc fork-position 1)
+      (forks-update! fork-position 1)
       true)
     false))
 
-(defn release-forks! [x y]
-  (swap! forks assoc x 0)
-  (swap! forks assoc y 0))
+(defn release-forks [a-fork b-fork]
+  (forks-update! a-fork 0)
+  (forks-update! b-fork 0))
 
 (defn grab-forks-and-eat [position]
   (let [x (mod (+ position 0) 5)
         y (mod (+ position 1) 5)]
-    (if (and (grab-fork! x)
-             (grab-fork! y))
+    (if (and (grab-fork x)
+             (grab-fork y))
       (eat! position))
-    (release-forks! x y)))
+    (release-forks x y)))
 
 (defn philosopher [position]
   (while (run?)
@@ -49,11 +52,11 @@
   (while (run?)
     (Thread/sleep 50)
       (println "philosopher's bellies:"
-              (nth @eaten 0)
-              (nth @eaten 1)
-              (nth @eaten 2)
-              (nth @eaten 3)
-              (nth @eaten 4))))
+              (nth (@table :eaten) 0)
+              (nth (@table :eaten) 1)
+              (nth (@table :eaten) 2)
+              (nth (@table :eaten) 3)
+              (nth (@table :eaten) 4))))
 
   (defn main- []
     (future (philosopher 0))
